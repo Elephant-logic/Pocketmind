@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>PocketMind AI v0.4</title>
+<title>PocketMind AI v0.4.1</title>
 <style>
 :root{
   color-scheme:dark;
@@ -183,7 +183,7 @@ header{
 
 <main>
 <header>
-  <div><strong>PocketMind</strong><span class="badge">PWA v0.4</span></div>
+  <div><strong>PocketMind</strong><span class="badge">PWA v0.4.1</span></div>
   <span id="networkTop" class="small"></span>
 </header>
 
@@ -198,7 +198,7 @@ header{
 
   <div class="msg assistant">
     <div class="who">PocketMind</div>
-    <div class="bubble">This build is an installable local-first app.
+    <div class="bubble">This build is an installable local-first app with Android WebGPU safe mode.
 
 1. Install it from your browser if the Install button appears.
 2. Tap “Load local AI”.
@@ -215,6 +215,16 @@ header{
 </div>
 </main>
 
+<script>
+// Android compatibility patch: prefer q4f32. Some mobile WebGPU drivers report
+// shader-f16 support but lose GPU buffers during token generation.
+if (/Android/i.test(navigator.userAgent)) {
+  const model = document.getElementById("modelSelect");
+  if (model) model.value = "SmolLM2-360M-Instruct-q4f32_1-MLC";
+  const compat = document.getElementById("mobileCompat");
+  if (compat) compat.textContent = "Android safe model selected (f32).";
+}
+</script>
 <script src="app.js" type="module"></script>
 </body>
 </html>
