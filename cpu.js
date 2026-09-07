@@ -28,15 +28,21 @@ function progress(p,msg){$("progressBar").style.width=(Math.max(0,Math.min(1,p))
 async function diagnostic(show=true){
   if(!allowed()){if(show)add("system","PocketMind needs to run from HTTPS.");return false;}
   if(!navigator.onLine){if(show)add("system","The first CPU model download needs internet.");return false;}
-  progress(0,"Testing CPU model host…");
+  progress(0,"Testing CPU model and runtime hosts…");
   try{
     const c=new AbortController(),to=setTimeout(()=>c.abort(),15000);
-    const r=await fetch(`https://huggingface.co/${MODEL.repo}/resolve/main/README.md`,{cache:"no-store",signal:c.signal});
-    clearTimeout(to);if(!r.ok)throw new Error("HTTP "+r.status);await r.text();
+    const [modelResp,runtimeResp]=await Promise.all([
+      fetch(`https://huggingface.co/${MODEL.repo}/resolve/main/README.md`,{cache:"no-store",signal:c.signal}),
+      fetch("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js",{cache:"no-store",signal:c.signal})
+    ]);
+    clearTimeout(to);
+    if(!modelResp.ok)throw new Error("Model host HTTP "+modelResp.status);
+    if(!runtimeResp.ok)throw new Error("Runtime CDN HTTP "+runtimeResp.status);
+    await Promise.all([modelResp.text(),runtimeResp.text()]);
     progress(0,"Connection passed. Ready to download the ~271 MB CPU model.");
     if(show)add("system","CPU/WebAssembly compatibility check passed. This path avoids your phone's WebGPU driver.");
     return true;
-  }catch(e){progress(0,"Model host test failed.");if(show)add("system","Could not reach the model host. Check Wi‑Fi/mobile data, VPN, ad blocker or private DNS.\n\n"+(e?.message||e));return false;}
+  }catch(e){progress(0,"Model host test failed.");if(show)add("system","Could not reach the model/runtime host. Check Wi‑Fi/mobile data, VPN, ad blocker or private DNS.\n\n"+(e?.message||e));return false;}
 }
 async function load(){
   if(ready||loading)return;
@@ -45,8 +51,8 @@ async function load(){
   try{
     progress(0,"Loading WebAssembly runtime…");
     const [pkg,wasm]=await Promise.all([
-      import("https://esm.sh/@wllama/wllama@3.6.1"),
-      import("https://esm.sh/@wllama/wllama@3.6.1/esm/wasm-from-cdn.js")
+      import("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js"),
+      import("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm-from-cdn.js")
     ]);
     engine=new pkg.Wllama(wasm.default,{allowOffline:true,parallelDownloads:2});
     try{engine.setCompat("default");}catch(e){}
@@ -132,6 +138,6 @@ $("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.pre
 (async()=>{
   refresh();status("not loaded");text("mobileCompat","CPU/WebAssembly mode — WebGPU is bypassed.");
   if("serviceWorker"in navigator&&allowed())try{await navigator.serviceWorker.register("./sw.js");}catch(e){}
-  add("system","PocketMind v0.5 is using CPU/WebAssembly on this phone. It is slower than WebGPU, but it avoids the GPUBuffer crash.");
+  add("system","PocketMind v0.5.1 is using CPU/WebAssembly on this phone. It is slower than WebGPU, but it avoids the GPUBuffer crash.");
   if(standalone()){$("installBtn").classList.add("installHidden");$("mobileInstallBtn").classList.add("installHidden");}
 })();
