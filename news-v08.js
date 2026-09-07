@@ -1,8 +1,7 @@
 (() => {
-  const VERSION = "PWA v0.8 NEWS";
+  const VERSION = "PWA v0.8.1 NEWS";
   let busy = false;
   let bypass = false;
-
   const $ = id => document.getElementById(id);
 
   function isNewsQuery(q) {
@@ -40,7 +39,7 @@
     return `${y}-${m}-${d}${hh ? ` ${hh}:${mm} UTC` : ""}`;
   }
 
-  async function fetchJSON(url, timeout = 15000) {
+  async function fetchJSON(url, timeout = 12000) {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), timeout);
     try {
@@ -52,20 +51,62 @@
     }
   }
 
+  function fetchJSONP(url, timeout = 15000) {
+    return new Promise((resolve, reject) => {
+      const cb = `__pocketmind_gdelt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const u = new URL(url);
+      u.searchParams.set("format", "jsonp");
+      u.searchParams.set("callback", cb);
+      const script = document.createElement("script");
+      let finished = false;
+      const cleanup = () => {
+        try { delete window[cb]; } catch (_) { window[cb] = undefined; }
+        script.remove();
+      };
+      const timer = setTimeout(() => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error("Live news JSONP timed out"));
+      }, timeout);
+      window[cb] = data => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        cleanup();
+        resolve(data);
+      };
+      script.onerror = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        cleanup();
+        reject(new Error("Live news script request failed"));
+      };
+      script.src = u.toString();
+      script.async = true;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function getGdelt(url) {
+    try {
+      return await fetchJSON(url);
+    } catch (fetchError) {
+      console.warn("GDELT fetch failed; trying JSONP fallback", fetchError);
+      return await fetchJSONP(url);
+    }
+  }
+
   async function searchNews(q) {
     const topic = topicFrom(q);
     const endpoint = "https://api.gdeltproject.org/api/v2/doc/doc";
-
     async function run(span) {
       const p = new URLSearchParams({
-        query: gdeltQuery(topic),
-        mode: "ArtList",
-        format: "json",
-        maxrecords: "18",
-        sort: "DateDesc",
-        timespan: span
+        query: gdeltQuery(topic), mode: "ArtList", format: "json",
+        maxrecords: "18", sort: "DateDesc", timespan: span
       });
-      return fetchJSON(endpoint + "?" + p.toString());
+      return getGdelt(endpoint + "?" + p.toString());
     }
 
     let data = await run("24h");
@@ -88,15 +129,10 @@
       }
       if (domains.has(domain)) continue;
       domains.add(domain);
-      items.push({
-        title: a.title,
-        url: a.url,
-        domain,
-        date: seenDate(a.seendate)
-      });
+      items.push({ title: a.title, url: a.url, domain, date: seenDate(a.seendate) });
       if (items.length >= 5) break;
     }
-    if (!items.length) throw new Error("No live headlines were returned");
+    if (!items.length) throw new Error("No recent headlines were returned");
     return { topic, items };
   }
 
@@ -118,7 +154,6 @@
 
   function renderResults(q, result) {
     const bubble = addMessage("assistant", "");
-
     const heading = document.createElement("div");
     heading.style.fontWeight = "700";
     heading.style.marginBottom = "6px";
@@ -129,102 +164,65 @@
     note.style.fontSize = "12px";
     note.style.color = "var(--muted)";
     note.style.marginBottom = "12px";
-    note.textContent = "Shown before AI summarisation so you can see what the sources actually say.";
+    note.textContent = "These are source headlines first. The local AI only summarises them if you ask it to.";
     bubble.appendChild(note);
 
     result.items.forEach((item, i) => {
       const row = document.createElement("div");
       row.style.padding = "10px 0";
       row.style.borderTop = i ? "1px solid var(--border)" : "0";
-
       const a = document.createElement("a");
-      a.href = item.url;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.style.color = "#58a6ff";
-      a.style.textDecoration = "none";
-      a.style.fontWeight = "600";
+      a.href = item.url; a.target = "_blank"; a.rel = "noopener";
+      a.style.color = "#58a6ff"; a.style.textDecoration = "none"; a.style.fontWeight = "600";
       a.textContent = `${i + 1}. ${item.title}`;
-
       const meta = document.createElement("div");
-      meta.style.fontSize = "11px";
-      meta.style.color = "var(--muted)";
-      meta.style.marginTop = "3px";
+      meta.style.fontSize = "11px"; meta.style.color = "var(--muted)"; meta.style.marginTop = "3px";
       meta.textContent = `${item.domain}${item.date ? " · " + item.date : ""}`;
-
-      row.append(a, meta);
-      bubble.appendChild(row);
+      row.append(a, meta); bubble.appendChild(row);
     });
 
     const controls = document.createElement("div");
-    controls.style.marginTop = "14px";
-    controls.style.display = "flex";
-    controls.style.gap = "8px";
-    controls.style.flexWrap = "wrap";
-
+    controls.style.marginTop = "14px"; controls.style.display = "flex"; controls.style.gap = "8px"; controls.style.flexWrap = "wrap";
     const summarize = document.createElement("button");
-    summarize.className = "primary";
-    summarize.textContent = "Summarise locally";
-    summarize.addEventListener("click", () => summarizeLocally(q, result, summarize));
-
+    summarize.className = "primary"; summarize.textContent = "Summarise locally";
+    summarize.addEventListener("click", () => summarizeLocally(result, summarize));
     const refresh = document.createElement("button");
     refresh.textContent = "Refresh sources";
     refresh.addEventListener("click", async () => {
-      refresh.disabled = true;
-      refresh.textContent = "Refreshing…";
-      try {
-        const newer = await searchNews(q);
-        const newBubble = renderResults(q, newer);
-        newBubble?.scrollIntoView({behavior:"smooth", block:"end"});
-      } catch (e) {
-        addMessage("assistant", "I couldn't refresh the live sources: " + (e?.message || e));
-      } finally {
-        refresh.disabled = false;
-        refresh.textContent = "Refresh sources";
-      }
+      refresh.disabled = true; refresh.textContent = "Refreshing…";
+      try { renderResults(q, await searchNews(q)); }
+      catch (e) { addMessage("assistant", "I couldn't refresh the live sources: " + (e?.message || e)); }
+      finally { refresh.disabled = false; refresh.textContent = "Refresh sources"; }
     });
-
-    controls.append(summarize, refresh);
-    bubble.appendChild(controls);
+    controls.append(summarize, refresh); bubble.appendChild(controls);
     return bubble;
   }
 
-  function summarizeLocally(originalQ, result, button) {
-    const input = $("input");
-    const send = $("send");
-    const mode = $("researchMode");
+  function summarizeLocally(result, button) {
+    const input = $("input"), send = $("send"), mode = $("researchMode");
     if (!input || !send) return;
-
     const compact = result.items.map((x, i) => `${i + 1}. ${x.title} (${x.domain}${x.date ? ", " + x.date : ""})`).join("\n");
-    const prompt = `Give a short factual summary of the items below. Use only the text shown. Do not invent details. If the items are unrelated, say that clearly.\n\n${compact}`;
-
+    const prompt = `Give a short factual summary of these headlines. Use only the text shown. Do not invent article details. If the headlines cover unrelated stories, say that clearly.\n\n${compact}`;
     const previousMode = mode?.value;
     if (mode) mode.value = "never";
     input.value = prompt;
-
-    bypass = true;
-    button.disabled = true;
-    button.textContent = "Summarising…";
+    bypass = true; button.disabled = true; button.textContent = "Summarising…";
     try {
       send.click();
       const userBubbles = document.querySelectorAll(".msg.user .bubble");
       const last = userBubbles[userBubbles.length - 1];
-      if (last) last.textContent = "Summarise these source items";
+      if (last) last.textContent = "Summarise these source headlines";
     } finally {
       bypass = false;
       if (mode && previousMode != null) mode.value = previousMode;
-      setTimeout(() => {
-        button.disabled = false;
-        button.textContent = "Summarise locally";
-      }, 1200);
+      setTimeout(() => { button.disabled = false; button.textContent = "Summarise locally"; }, 1200);
     }
   }
 
   async function handleNews(q) {
     if (busy) return;
     busy = true;
-    const input = $("input");
-    if (input) input.value = "";
+    const input = $("input"); if (input) input.value = "";
     addMessage("user", q);
     const bubble = addMessage("assistant", "Searching live sources…");
     try {
@@ -233,42 +231,32 @@
       renderResults(q, result);
     } catch (e) {
       bubble.textContent = "I couldn't reach live headline sources, so I won't fake a current answer. " + (e?.message || e);
-    } finally {
-      busy = false;
-    }
+    } finally { busy = false; }
   }
 
   function shouldIntercept(q) {
     if (bypass || busy || !isNewsQuery(q)) return false;
     const mode = $("researchMode");
-    if (mode?.value === "never") return false;
-    return true;
+    return mode?.value !== "never";
   }
 
   document.addEventListener("click", e => {
-    const btn = e.target?.closest?.("#send");
-    if (!btn) return;
+    const btn = e.target?.closest?.("#send"); if (!btn) return;
     const q = $("input")?.value?.trim() || "";
     if (!shouldIntercept(q)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    handleNews(q);
+    e.preventDefault(); e.stopImmediatePropagation(); handleNews(q);
   }, true);
 
   document.addEventListener("keydown", e => {
     if (e.target?.id !== "input" || e.key !== "Enter" || e.shiftKey) return;
-    const q = e.target.value.trim();
-    if (!shouldIntercept(q)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    handleNews(q);
+    const q = e.target.value.trim(); if (!shouldIntercept(q)) return;
+    e.preventDefault(); e.stopImmediatePropagation(); handleNews(q);
   }, true);
 
   window.addEventListener("DOMContentLoaded", () => {
-    const badge = document.querySelector(".badge");
-    if (badge) badge.textContent = VERSION;
+    const badge = document.querySelector(".badge"); if (badge) badge.textContent = VERSION;
     document.querySelectorAll(".status").forEach(el => {
-      if (/Research/.test(el.textContent || "")) el.textContent = "Research: live headlines first + optional local summary";
+      if (/Research/.test(el.textContent || "")) el.textContent = "Research: live headlines + JSONP fallback + optional local summary";
     });
   });
 })();
