@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build PocketMind v0.7
+      - name: Build PocketMind v0.8
         shell: bash
         run: |
           npm install --no-save @wllama/wllama@3.6.1
@@ -67,7 +67,7 @@ jobs:
             if(!allowed()){if(show)add("system","PocketMind needs HTTPS.");return false;}
             if(!navigator.onLine){if(show)add("system","The first model download needs internet.");return false;}
             progress(0,"Bundled CPU runtime is ready to test directly.");
-            if(show)add("system","PocketMind v0.7 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
+            if(show)add("system","PocketMind v0.8 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
             return true;
           }
           async function load()''',
@@ -80,9 +80,8 @@ jobs:
           s = s.replace('default:"https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm"', 'default:"./vendor/wllama/esm/wasm/wllama.wasm"')
           s = re.sub(r'\n\s*// Force the plain CPU/WASM path.*?try\{engine\.setCompat\(null\);\}catch\(e\)\{\}', '', s, flags=re.S)
           s = re.sub(r'\{n_ctx:\d+,n_batch:\d+,n_threads:1,n_gpu_layers:0', '{n_ctx:384,n_batch:16,n_threads:1,n_gpu_layers:0', s)
-          s = s.replace('PocketMind v0.5.2 is using CPU/WebAssembly', 'PocketMind v0.7 is using bundled CPU/WebAssembly')
+          s = s.replace('PocketMind v0.5.2 is using CPU/WebAssembly', 'PocketMind v0.8 is using bundled CPU/WebAssembly')
 
-          # Research only when freshness/search is actually requested. Static questions stay fast/local.
           s = re.sub(
               r'function shouldResearch\(q\)\{.*?\n\}',
               '''function shouldResearch(q){
@@ -95,99 +94,11 @@ jobs:
               count=1,
               flags=re.S,
           )
-
-          # Rename the existing Wikipedia lookup so it becomes the static/reference fallback.
-          s = s.replace('async function research(q){', 'async function wikiResearch(q){', 1)
           s = s.replace('.slice(0,1600)', '.slice(0,650)')
 
-          # Add a live, multi-source news search using GDELT DOC 2.0 (CORS-enabled, no API key).
-          news_code = r'''
-          function isNewsQuery(q){
-            return /\b(news|headlines|breaking|latest|today|current|recent|happening)\b/i.test(q);
-          }
-          function cleanNewsTopic(q){
-            let x=q.trim().replace(/[?!.]+$/,'');
-            x=x.replace(/^what(?:'s| is)?\s+(?:the\s+)?(?:latest\s+)?(?:news|headlines)(?:\s+(?:about|on|in|from))?\s*/i,'');
-            x=x.replace(/^what\s+news(?:\s+(?:about|on|in|from))?\s*/i,'');
-            x=x.replace(/^what(?:'s| is)\s+happening(?:\s+(?:about|on|in|with))?\s*/i,'');
-            x=x.replace(/^(latest|current|recent|breaking)\s+(news|headlines)(?:\s+(?:about|on|in|from))?\s*/i,'');
-            x=alias(x).trim();
-            return x||'world';
-          }
-          function gdeltQuery(topic){
-            if(/United Kingdom/i.test(topic))return '(Britain OR British OR "United Kingdom") sourcelang:English';
-            if(/^world$/i.test(topic))return '(world OR global) sourcelang:English';
-            return `"${topic.replace(/"/g,'')}" sourcelang:English`;
-          }
-          function gdeltSeenDate(raw){
-            if(!raw||raw.length<8)return '';
-            const y=raw.slice(0,4),m=raw.slice(4,6),d=raw.slice(6,8),hh=raw.slice(9,11),mm=raw.slice(11,13);
-            return `${y}-${m}-${d}${hh?` ${hh}:${mm} UTC`:''}`;
-          }
-          async function fetchJSONTimeout(url,ms=15000){
-            const c=new AbortController();
-            const t=setTimeout(()=>c.abort(),ms);
-            try{
-              const r=await fetch(url,{cache:'no-store',signal:c.signal});
-              if(!r.ok)throw new Error(`HTTP ${r.status}`);
-              return await r.json();
-            }finally{clearTimeout(t);}
-          }
-          async function gdeltNews(q){
-            const topic=cleanNewsTopic(q);
-            const endpoint='https://api.gdeltproject.org/api/v2/doc/doc';
-            async function run(span){
-              const p=new URLSearchParams({
-                query:gdeltQuery(topic),mode:'ArtList',format:'json',maxrecords:'14',sort:'DateDesc',timespan:span
-              });
-              return await fetchJSONTimeout(endpoint+'?'+p.toString());
-            }
-            let data=await run('24h');
-            let articles=Array.isArray(data?.articles)?data.articles:[];
-            if(articles.length<3){
-              try{data=await run('3d');articles=Array.isArray(data?.articles)?data.articles:articles;}catch(e){}
-            }
-            const seen=new Set(),sources=[];
-            for(const a of articles){
-              if(!a?.url||!a?.title)continue;
-              let domain=(a.domain||'').toLowerCase();
-              if(!domain){try{domain=new URL(a.url).hostname.replace(/^www\./,'');}catch(e){domain='source';}}
-              if(seen.has(domain))continue;
-              seen.add(domain);
-              sources.push({title:decode(a.title),url:a.url,domain,date:gdeltSeenDate(a.seendate),country:a.sourcecountry||''});
-              if(sources.length>=5)break;
-            }
-            if(!sources.length)throw new Error('No recent news sources found');
-            const lines=sources.map((x,i)=>`${i+1}. ${x.title} — ${x.domain}${x.date?` — seen ${x.date}`:''}`);
-            const caution=sources.length<2?'Only one independent source was found; treat this as preliminary.':'These headlines come from different source domains. Compare them and do not invent details beyond what the headlines support.';
-            return {
-              kind:'news',
-              title:`Recent news: ${topic}`,
-              url:sources[0].url,
-              sources,
-              extract:`CURRENT NEWS HEADLINES (${topic})\n${lines.join('\n')}\n\n${caution}`
-            };
-          }
-          async function research(q){
-            if(isNewsQuery(q))return await gdeltNews(q);
-            const page=await wikiResearch(q);
-            if(page)page.sources=[{title:page.title,url:page.url,domain:'wikipedia.org',date:''}];
-            return page;
-          }
-          '''
-          s = s.replace('function messages(q,page){', news_code + '\nfunction messages(q,page){', 1)
-
-          # Make the system prompt explicitly conservative with headline-only news evidence.
-          s = s.replace(
-              'If evidence is insufficient, say so.`;',
-              'If evidence is insufficient, say so. When given current news headlines, summarize only what those headlines support, distinguish uncertainty, and never invent article details.`;'
-          )
-
-          # Add a generation abort controller.
           s = s.replace('let engine=null,loading=false,ready=false,deferredInstall=null;',
                         'let engine=null,loading=false,ready=false,deferredInstall=null,generationAbort=null;')
 
-          # Stream output, keep answers short on CPU, and show all independent sources used.
           s = re.sub(
               r'async function send\(\)\{.*?\n\}\nfunction addMemory',
               r'''async function send(){
@@ -197,71 +108,27 @@ jobs:
             inp.value="";add("user",q);
             const m=remember(q);if(m){add("assistant",`I’ll remember: "${m}"`);return;}
             if(!ready){add("system","Load the local AI first.");return;}
-
             btn.textContent="Stop";
             generationAbort=new AbortController();
             const controller=generationAbort;
             let ticker=null,bubble=null,gotToken=false;
             const started=Date.now();
-
             try{
               let page=null;
-              if(shouldResearch(q)&&navigator.onLine){
-                bubble=add("assistant",isNewsQuery(q)?"Searching current news…":"Researching…");
-                try{page=await research(q);}
-                catch(e){
-                  console.warn(e);
-                  if(isNewsQuery(q)){
-                    bubble.textContent="I couldn't reach current news sources, so I won't pretend I have up-to-date news. Try again in a moment.";
-                    return;
-                  }
-                }
-                bubble.textContent="Thinking locally… 0s";
-              }else{
-                bubble=add("assistant","Thinking locally… 0s");
-              }
-
-              ticker=setInterval(()=>{
-                if(!gotToken&&bubble){
-                  const secs=Math.floor((Date.now()-started)/1000);
-                  bubble.textContent=`Thinking locally… ${secs}s`;
-                }
-              },1000);
-
-              const stream=await engine.createChatCompletion({
-                messages:messages(q,page),max_tokens:88,temperature:.25,top_p:.9,top_k:40,
-                stream:true,abortSignal:controller.signal
-              });
-
+              if(shouldResearch(q)&&navigator.onLine){try{page=await research(q);}catch(e){console.warn(e);}}
+              bubble=add("assistant","Thinking locally… 0s");
+              ticker=setInterval(()=>{if(!gotToken&&bubble){bubble.textContent=`Thinking locally… ${Math.floor((Date.now()-started)/1000)}s`; }},1000);
+              const stream=await engine.createChatCompletion({messages:messages(q,page),max_tokens:72,temperature:.3,top_p:.9,top_k:40,stream:true,abortSignal:controller.signal});
               let ans="";
               for await(const chunk of stream){
                 const delta=chunk?.choices?.[0]?.delta?.content||"";
-                if(delta){
-                  if(!gotToken){gotToken=true;if(ticker){clearInterval(ticker);ticker=null;}}
-                  ans+=delta;bubble.textContent=ans;$("chat").scrollTop=$("chat").scrollHeight;
-                }
+                if(delta){if(!gotToken){gotToken=true;if(ticker){clearInterval(ticker);ticker=null;}}ans+=delta;bubble.textContent=ans;$("chat").scrollTop=$("chat").scrollHeight;}
               }
               if(!ans)bubble.textContent="I couldn't produce an answer.";
-
-              const srcs=page?.sources||[];
-              if(srcs.length){
-                const d=document.createElement("div");d.className="sources";
-                d.innerHTML=`<strong>Sources (${srcs.length})</strong>`;
-                srcs.forEach(src=>{
-                  const a=document.createElement("a");a.target="_blank";a.rel="noopener";a.href=src.url;
-                  a.textContent=src.domain?`${src.title} — ${src.domain}`:src.title;d.appendChild(a);
-                });
-                bubble.appendChild(d);
-              }
+              if(page){const d=document.createElement("div");d.className="sources";d.innerHTML="<strong>Source</strong>";const a=document.createElement("a");a.target="_blank";a.rel="noopener";a.href=page.url;a.textContent=page.title;d.appendChild(a);bubble.appendChild(d);}
               if(ans){recent.push({role:"user",content:q},{role:"assistant",content:ans});if(recent.length>6)recent=recent.slice(-6);sessionStorage.setItem(CHAT_KEY,JSON.stringify(recent));}
-            }catch(e){
-              if(controller.signal.aborted){if(bubble&&!gotToken)bubble.textContent="Stopped.";}
-              else add("system","Generation failed: "+(e?.message||e));
-            }finally{
-              if(ticker)clearInterval(ticker);
-              if(generationAbort===controller)generationAbort=null;
-              btn.textContent="Send";
-            }
+            }catch(e){if(controller.signal.aborted){if(bubble&&!gotToken)bubble.textContent="Stopped.";}else add("system","Generation failed: "+(e?.message||e));}
+            finally{if(ticker)clearInterval(ticker);if(generationAbort===controller)generationAbort=null;btn.textContent="Send";}
           }
           function addMemory''',
               s,
@@ -272,26 +139,27 @@ jobs:
 
           index = Path('dist/index.html')
           h = index.read_text()
-          h = h.replace('PWA v0.5.2 CPU', 'PWA v0.7 CPU')
-          h = h.replace('Run the compatibility check, then download the model once.', 'Bundled CPU model + live multi-source news research.')
-          h = h.replace('<title>PocketMind AI v0.5</title>', '<title>PocketMind AI v0.7</title>')
-          h = h.replace('Research source: Wikipedia', 'Research: GDELT News + Wikipedia')
-          h = h.replace('When current/reference information is needed, PocketMind can research it and let the local model reason over the result.', 'For current news, PocketMind now searches multiple live news sources, shows the source links, and lets the local model summarize only what those headlines support.')
+          h = re.sub(r'PWA v[0-9.]+(?: CPU| NEWS)?', 'PWA v0.8 NEWS', h)
+          h = re.sub(r'<title>.*?</title>', '<title>PocketMind AI v0.8</title>', h, count=1)
+          if 'news-v08.js' not in h:
+              h = h.replace('</body>', '<script src="news-v08.js"></script>\n</body>')
           index.write_text(h)
 
           sw = Path('dist/sw.js')
           w = sw.read_text()
-          w = re.sub(r'pocketmind-shell-v[^"\']+', 'pocketmind-shell-v0700', w, count=1)
+          w = re.sub(r'pocketmind-(?:news-)?shell-v[^"\']+', 'pocketmind-news-shell-v0801', w, count=1)
+          if '"./news-v08.js"' not in w:
+              w = w.replace('"./cpu.js",', '"./cpu.js",\n  "./news-v08.js",')
           sw.write_text(w)
           PY
 
           node --check dist/cpu.js
-          grep -q 'PWA v0.7 CPU' dist/index.html
+          node --check dist/news-v08.js
+          grep -q 'PWA v0.8 NEWS' dist/index.html
+          grep -q 'news-v08.js' dist/index.html
           grep -q 'bartowski/SmolLM2-360M-Instruct-GGUF' dist/cpu.js
           grep -q './vendor/wllama/esm/index.js' dist/cpu.js
-          grep -q 'api.gdeltproject.org/api/v2/doc/doc' dist/cpu.js
-          grep -q 'GDELT News + Wikipedia' dist/index.html
-          grep -q 'Sources (' dist/cpu.js
+          grep -q 'Summarise locally' dist/news-v08.js
           grep -q 'stream:true' dist/cpu.js
           ! grep -q 'Pre-load check failed' dist/cpu.js
 
