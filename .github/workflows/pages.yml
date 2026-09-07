@@ -4,6 +4,8 @@ on:
   push:
     branches: ["main", "master"]
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
@@ -34,16 +36,17 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build PocketMind v0.8.1
+      - name: Build PocketMind v0.9
         shell: bash
         run: |
-          npm install --no-save @wllama/wllama@3.6.1
+          npm install --no-save @wllama/wllama@3.6.1 fast-xml-parser@5
           mkdir -p dist
           rsync -a \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
             --exclude='dist' \
+            --exclude='scripts' \
             --exclude='package.json' \
             --exclude='package-lock.json' \
             ./ dist/
@@ -52,6 +55,9 @@ jobs:
           cp -R node_modules/@wllama/wllama/esm dist/vendor/wllama/
           test -f dist/vendor/wllama/esm/index.js
           test -f dist/vendor/wllama/esm/wasm/wllama.wasm
+
+          # Fetch RSS on the GitHub runner. The phone only reads same-origin news.json.
+          node scripts/build-news.mjs
 
           python3 - <<'PY'
           from pathlib import Path
@@ -66,7 +72,7 @@ jobs:
             if(!allowed()){if(show)add("system","PocketMind needs HTTPS.");return false;}
             if(!navigator.onLine){if(show)add("system","The first model download needs internet.");return false;}
             progress(0,"Bundled CPU runtime is ready to test directly.");
-            if(show)add("system","PocketMind v0.8.1 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
+            if(show)add("system","PocketMind v0.9 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
             return true;
           }
           async function load()''',
@@ -78,7 +84,8 @@ jobs:
           s = s.replace('default:"https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm"', 'default:"./vendor/wllama/esm/wasm/wllama.wasm"')
           s = re.sub(r'\n\s*// Force the plain CPU/WASM path.*?try\{engine\.setCompat\(null\);\}catch\(e\)\{\}', '', s, flags=re.S)
           s = re.sub(r'\{n_ctx:\d+,n_batch:\d+,n_threads:1,n_gpu_layers:0', '{n_ctx:384,n_batch:16,n_threads:1,n_gpu_layers:0', s)
-          s = re.sub(r'PocketMind v[0-9.]+ is using bundled CPU/WebAssembly', 'PocketMind v0.8.1 is using bundled CPU/WebAssembly', s)
+          s = re.sub(r'PocketMind v[0-9.]+ is using (?:bundled )?CPU/WebAssembly', 'PocketMind v0.9 is using bundled CPU/WebAssembly', s)
+
           s = re.sub(
               r'function shouldResearch\(q\)\{.*?\n\}',
               '''function shouldResearch(q){
@@ -93,6 +100,7 @@ jobs:
           )
           s = s.replace('.slice(0,1600)', '.slice(0,650)')
           s = s.replace('let engine=null,loading=false,ready=false,deferredInstall=null;', 'let engine=null,loading=false,ready=false,deferredInstall=null,generationAbort=null;')
+
           s = re.sub(
               r'async function send\(\)\{.*?\n\}\nfunction addMemory',
               r'''async function send(){
@@ -127,32 +135,18 @@ jobs:
               flags=re.S,
           )
           cpu.write_text(s)
-
-          index = Path('dist/index.html')
-          h = index.read_text()
-          h = re.sub(r'PWA v[0-9.]+(?: CPU| NEWS)?', 'PWA v0.8.1 NEWS', h)
-          h = re.sub(r'<title>.*?</title>', '<title>PocketMind AI v0.8.1</title>', h, count=1)
-          if 'news-v08.js' not in h:
-              h = h.replace('</body>', '<script src="news-v08.js"></script>\n</body>')
-          index.write_text(h)
-
-          sw = Path('dist/sw.js')
-          w = sw.read_text()
-          w = re.sub(r'pocketmind-(?:news-)?shell-v[^"\']+', 'pocketmind-news-shell-v0811', w, count=1)
-          if '"./news-v08.js"' not in w:
-              w = w.replace('"./cpu.js",', '"./cpu.js",\n  "./news-v08.js",')
-          sw.write_text(w)
           PY
 
           node --check dist/cpu.js
-          node --check dist/news-v08.js
-          grep -q 'PWA v0.8.1 NEWS' dist/index.html
-          grep -q 'news-v08.js' dist/index.html
-          grep -q 'fetchJSONP' dist/news-v08.js
-          grep -q 'format", "jsonp"' dist/news-v08.js
+          node --check dist/news-v09.js
+          test -f dist/news.json
+          node -e 'const n=require("./dist/news.json"); if(!(n.categories?.uk?.length>0)) process.exit(1); console.log(`validated UK headlines: ${n.categories.uk.length}`)'
+          grep -q 'PWA v0.9 SERVER NEWS' dist/index.html
+          grep -q 'news-v09.js' dist/index.html
+          grep -q './news.json' dist/news-v09.js
           grep -q 'bartowski/SmolLM2-360M-Instruct-GGUF' dist/cpu.js
           grep -q './vendor/wllama/esm/index.js' dist/cpu.js
-          grep -q 'Summarise locally' dist/news-v08.js
+          grep -q 'Summarise locally' dist/news-v09.js
           grep -q 'stream:true' dist/cpu.js
           ! grep -q 'Pre-load check failed' dist/cpu.js
 
