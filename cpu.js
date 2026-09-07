@@ -33,7 +33,15 @@ async function diagnostic(show=true){
     const c=new AbortController(),to=setTimeout(()=>c.abort(),15000);
     const [modelResp,runtimeResp]=await Promise.all([
       fetch(`https://huggingface.co/${MODEL.repo}/resolve/main/README.md`,{cache:"no-store",signal:c.signal}),
-      fetch("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js",{cache:"no-store",signal:c.signal})
+      Promise.all([
+        fetch("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/+esm",{cache:"no-store",signal:c.signal}),
+        fetch("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm",{cache:"no-store",signal:c.signal})
+      ]).then(async ([moduleResp, wasmResp]) => {
+        if(!moduleResp.ok) throw new Error("Runtime module HTTP "+moduleResp.status);
+        if(!wasmResp.ok) throw new Error("WASM HTTP "+wasmResp.status);
+        await Promise.all([moduleResp.arrayBuffer(), wasmResp.arrayBuffer()]);
+        return {ok:true,text:async()=>"ok"};
+      })
     ]);
     clearTimeout(to);
     if(!modelResp.ok)throw new Error("Model host HTTP "+modelResp.status);
@@ -42,7 +50,7 @@ async function diagnostic(show=true){
     progress(0,"Connection passed. Ready to download the ~271 MB CPU model.");
     if(show)add("system","CPU/WebAssembly compatibility check passed. This path avoids your phone's WebGPU driver.");
     return true;
-  }catch(e){progress(0,"Model host test failed.");if(show)add("system","Could not reach the model/runtime host. Check Wi‑Fi/mobile data, VPN, ad blocker or private DNS.\n\n"+(e?.message||e));return false;}
+  }catch(e){progress(0,"Model host test failed.");if(show)add("system","Could not reach the model host. Check Wi‑Fi/mobile data, VPN, ad blocker or private DNS.\n\n"+(e?.message||e));return false;}
 }
 async function load(){
   if(ready||loading)return;
@@ -50,12 +58,14 @@ async function load(){
   loading=true;$("loadModelBtn").disabled=true;$("mobileLoadBtn").disabled=true;$("modelSelect").disabled=true;status("loading CPU model…","warn");
   try{
     progress(0,"Loading WebAssembly runtime…");
-    const [pkg,wasm]=await Promise.all([
-      import("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/index.js"),
-      import("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm-from-cdn.js")
-    ]);
-    engine=new pkg.Wllama(wasm.default,{allowOffline:true,parallelDownloads:2});
-    try{engine.setCompat("default");}catch(e){}
+    const pkg=await import("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/+esm");
+    const wasmPaths={
+      default:"https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm"
+    };
+    engine=new pkg.Wllama(wasmPaths,{allowOffline:true,parallelDownloads:2});
+    // Force the plain CPU/WASM path on this Android build. This avoids both WebGPU
+    // and the optional compat runtime's extra CDN worker/module fetches.
+    try{engine.setCompat(null);}catch(e){}
     await engine.loadModelFromHF(
       {repo:MODEL.repo,file:MODEL.file},
       {n_ctx:768,n_batch:64,n_threads:1,n_gpu_layers:0,progressCallback:({loaded,total})=>{
@@ -138,6 +148,6 @@ $("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.pre
 (async()=>{
   refresh();status("not loaded");text("mobileCompat","CPU/WebAssembly mode — WebGPU is bypassed.");
   if("serviceWorker"in navigator&&allowed())try{await navigator.serviceWorker.register("./sw.js");}catch(e){}
-  add("system","PocketMind v0.5.1 is using CPU/WebAssembly on this phone. It is slower than WebGPU, but it avoids the GPUBuffer crash.");
+  add("system","PocketMind v0.5.2 is using CPU/WebAssembly on this phone. It is slower than WebGPU, but it avoids the GPUBuffer crash.");
   if(standalone()){$("installBtn").classList.add("installHidden");$("mobileInstallBtn").classList.add("installHidden");}
 })();
