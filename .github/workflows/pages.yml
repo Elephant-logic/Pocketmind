@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build PocketMind v0.8
+      - name: Build PocketMind v0.8.1
         shell: bash
         run: |
           npm install --no-save @wllama/wllama@3.6.1
@@ -60,28 +60,25 @@ jobs:
           cpu = Path('dist/cpu.js')
           s = cpu.read_text()
           s = s.replace('tensorblock/SmolLM2-360M-Instruct-GGUF', 'bartowski/SmolLM2-360M-Instruct-GGUF')
-
           s = re.sub(
               r'async function diagnostic\(show=true\)\{.*?\n\}\nasync function load\(\)',
               '''async function diagnostic(show=true){
             if(!allowed()){if(show)add("system","PocketMind needs HTTPS.");return false;}
             if(!navigator.onLine){if(show)add("system","The first model download needs internet.");return false;}
             progress(0,"Bundled CPU runtime is ready to test directly.");
-            if(show)add("system","PocketMind v0.8 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
+            if(show)add("system","PocketMind v0.8.1 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
             return true;
           }
           async function load()''',
               s,
               flags=re.S,
           )
-
           s = s.replace('if(!await diagnostic(false)){add("system","Pre-load check failed. Tap Run connection test for details.");return;}\n', '')
           s = s.replace('const pkg=await import("https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/+esm");', 'const pkg=await import("./vendor/wllama/esm/index.js");')
           s = s.replace('default:"https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm"', 'default:"./vendor/wllama/esm/wasm/wllama.wasm"')
           s = re.sub(r'\n\s*// Force the plain CPU/WASM path.*?try\{engine\.setCompat\(null\);\}catch\(e\)\{\}', '', s, flags=re.S)
           s = re.sub(r'\{n_ctx:\d+,n_batch:\d+,n_threads:1,n_gpu_layers:0', '{n_ctx:384,n_batch:16,n_threads:1,n_gpu_layers:0', s)
-          s = s.replace('PocketMind v0.5.2 is using CPU/WebAssembly', 'PocketMind v0.8 is using bundled CPU/WebAssembly')
-
+          s = re.sub(r'PocketMind v[0-9.]+ is using bundled CPU/WebAssembly', 'PocketMind v0.8.1 is using bundled CPU/WebAssembly', s)
           s = re.sub(
               r'function shouldResearch\(q\)\{.*?\n\}',
               '''function shouldResearch(q){
@@ -95,10 +92,7 @@ jobs:
               flags=re.S,
           )
           s = s.replace('.slice(0,1600)', '.slice(0,650)')
-
-          s = s.replace('let engine=null,loading=false,ready=false,deferredInstall=null;',
-                        'let engine=null,loading=false,ready=false,deferredInstall=null,generationAbort=null;')
-
+          s = s.replace('let engine=null,loading=false,ready=false,deferredInstall=null;', 'let engine=null,loading=false,ready=false,deferredInstall=null,generationAbort=null;')
           s = re.sub(
               r'async function send\(\)\{.*?\n\}\nfunction addMemory',
               r'''async function send(){
@@ -120,10 +114,7 @@ jobs:
               ticker=setInterval(()=>{if(!gotToken&&bubble){bubble.textContent=`Thinking locally… ${Math.floor((Date.now()-started)/1000)}s`; }},1000);
               const stream=await engine.createChatCompletion({messages:messages(q,page),max_tokens:72,temperature:.3,top_p:.9,top_k:40,stream:true,abortSignal:controller.signal});
               let ans="";
-              for await(const chunk of stream){
-                const delta=chunk?.choices?.[0]?.delta?.content||"";
-                if(delta){if(!gotToken){gotToken=true;if(ticker){clearInterval(ticker);ticker=null;}}ans+=delta;bubble.textContent=ans;$("chat").scrollTop=$("chat").scrollHeight;}
-              }
+              for await(const chunk of stream){const delta=chunk?.choices?.[0]?.delta?.content||"";if(delta){if(!gotToken){gotToken=true;if(ticker){clearInterval(ticker);ticker=null;}}ans+=delta;bubble.textContent=ans;$("chat").scrollTop=$("chat").scrollHeight;}}
               if(!ans)bubble.textContent="I couldn't produce an answer.";
               if(page){const d=document.createElement("div");d.className="sources";d.innerHTML="<strong>Source</strong>";const a=document.createElement("a");a.target="_blank";a.rel="noopener";a.href=page.url;a.textContent=page.title;d.appendChild(a);bubble.appendChild(d);}
               if(ans){recent.push({role:"user",content:q},{role:"assistant",content:ans});if(recent.length>6)recent=recent.slice(-6);sessionStorage.setItem(CHAT_KEY,JSON.stringify(recent));}
@@ -139,15 +130,15 @@ jobs:
 
           index = Path('dist/index.html')
           h = index.read_text()
-          h = re.sub(r'PWA v[0-9.]+(?: CPU| NEWS)?', 'PWA v0.8 NEWS', h)
-          h = re.sub(r'<title>.*?</title>', '<title>PocketMind AI v0.8</title>', h, count=1)
+          h = re.sub(r'PWA v[0-9.]+(?: CPU| NEWS)?', 'PWA v0.8.1 NEWS', h)
+          h = re.sub(r'<title>.*?</title>', '<title>PocketMind AI v0.8.1</title>', h, count=1)
           if 'news-v08.js' not in h:
               h = h.replace('</body>', '<script src="news-v08.js"></script>\n</body>')
           index.write_text(h)
 
           sw = Path('dist/sw.js')
           w = sw.read_text()
-          w = re.sub(r'pocketmind-(?:news-)?shell-v[^"\']+', 'pocketmind-news-shell-v0801', w, count=1)
+          w = re.sub(r'pocketmind-(?:news-)?shell-v[^"\']+', 'pocketmind-news-shell-v0811', w, count=1)
           if '"./news-v08.js"' not in w:
               w = w.replace('"./cpu.js",', '"./cpu.js",\n  "./news-v08.js",')
           sw.write_text(w)
@@ -155,8 +146,10 @@ jobs:
 
           node --check dist/cpu.js
           node --check dist/news-v08.js
-          grep -q 'PWA v0.8 NEWS' dist/index.html
+          grep -q 'PWA v0.8.1 NEWS' dist/index.html
           grep -q 'news-v08.js' dist/index.html
+          grep -q 'fetchJSONP' dist/news-v08.js
+          grep -q 'format", "jsonp"' dist/news-v08.js
           grep -q 'bartowski/SmolLM2-360M-Instruct-GGUF' dist/cpu.js
           grep -q './vendor/wllama/esm/index.js' dist/cpu.js
           grep -q 'Summarise locally' dist/news-v08.js
