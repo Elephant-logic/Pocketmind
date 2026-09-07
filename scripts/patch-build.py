@@ -32,7 +32,7 @@ s = s.replace(
 )
 s = re.sub(
     r'function shouldResearch\(q\)\{.*?\n\}',
-    '''function shouldResearch(q){
+    lambda _: '''function shouldResearch(q){
   const mode=$("researchMode").value;
   if(mode==="always")return true;
   if(mode==="never")return false;
@@ -88,7 +88,7 @@ n = news.read_text()
 n = re.sub(r'const VERSION = "PWA v[^"]+";', f'const VERSION = "{BADGE}";', n, count=1)
 n = re.sub(
     r'    const compact = items\.map\(\(x, i\) => .*?\n    const prompt = `.*?`;\n',
-    '''    const compact = items.map((x, i) => {
+    lambda _: '''    const compact = items.map((x, i) => {
       const shortSummary = String(x.summary || "").replace(/\\s+/g, " ").trim().slice(0, 140);
       return `${i + 1}. ${x.title} — ${x.source}${shortSummary ? ` — ${shortSummary}` : ""}`;
     }).join("\\n");
