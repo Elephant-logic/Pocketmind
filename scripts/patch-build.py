@@ -1,8 +1,8 @@
 from pathlib import Path
 import re
 
-VERSION = "0.9.2"
-BADGE = f"PWA v{VERSION} SERVER NEWS"
+VERSION = "1.0"
+BADGE = f"PWA v{VERSION} WEB"
 
 cpu = Path("dist/cpu.js")
 s = cpu.read_text()
@@ -13,7 +13,7 @@ s = re.sub(
   if(!allowed()){if(show)add("system","PocketMind needs HTTPS.");return false;}
   if(!navigator.onLine){if(show)add("system","The first model download needs internet.");return false;}
   progress(0,"Bundled CPU runtime is ready to test directly.");
-  if(show)add("system","PocketMind v0.9.2 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
+  if(show)add("system","PocketMind v1.0 bundles its CPU runtime with the app. Load Local AI tests the real runtime directly.");
   return true;
 }
 async function load()''',
@@ -25,7 +25,7 @@ s = s.replace('const pkg=await import("https://cdn.jsdelivr.net/npm/@wllama/wlla
 s = s.replace('default:"https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm"', 'default:"./vendor/wllama/esm/wasm/wllama.wasm"')
 s = re.sub(r'\n\s*// Force the plain CPU/WASM path.*?try\{engine\.setCompat\(null\);\}catch\(e\)\{\}', '', s, flags=re.S)
 s = re.sub(r'\{n_ctx:\d+,n_batch:\d+,n_threads:1,n_gpu_layers:0', '{n_ctx:768,n_batch:16,n_threads:1,n_gpu_layers:0', s)
-s = re.sub(r'PocketMind v[0-9.]+ is using (?:bundled )?CPU/WebAssembly', 'PocketMind v0.9.2 is using bundled CPU/WebAssembly', s)
+s = re.sub(r'PocketMind v[0-9.]+ is using (?:bundled )?CPU/WebAssembly', 'PocketMind v1.0 is using bundled CPU/WebAssembly', s)
 s = s.replace(
     'If evidence is insufficient, say so.`;',
     'If evidence is insufficient, say so. Keep normal answers concise, usually under 120 words. Always finish the final sentence; never stop mid-sentence.`;'
@@ -57,22 +57,22 @@ s = re.sub(
   btn.textContent="Stop";
   generationAbort=new AbortController();
   const controller=generationAbort;
-  const isNewsSummary=q.startsWith("NEWS_SUMMARY_REQUEST");
+  const isExternalContext=q.startsWith("NEWS_SUMMARY_REQUEST")||q.startsWith("WEB_SEARCH_REQUEST");
   let ticker=null,bubble=null,gotToken=false;
   const started=Date.now();
   try{
     let page=null;
-    if(!isNewsSummary&&shouldResearch(q)&&navigator.onLine){try{page=await research(q);}catch(e){console.warn(e);}}
+    if(!isExternalContext&&shouldResearch(q)&&navigator.onLine){try{page=await research(q);}catch(e){console.warn(e);}}
     bubble=add("assistant","Thinking locally… 0s");
     ticker=setInterval(()=>{if(!gotToken&&bubble){bubble.textContent=`Thinking locally… ${Math.floor((Date.now()-started)/1000)}s`; }},1000);
     const allMessages=messages(q,page);
-    const modelMessages=isNewsSummary?[allMessages[0],allMessages[allMessages.length-1]]:allMessages;
-    const stream=await engine.createChatCompletion({messages:modelMessages,max_tokens:isNewsSummary?256:192,temperature:.25,top_p:.9,top_k:40,stream:true,abortSignal:controller.signal});
+    const modelMessages=isExternalContext?[allMessages[0],allMessages[allMessages.length-1]]:allMessages;
+    const stream=await engine.createChatCompletion({messages:modelMessages,max_tokens:isExternalContext?256:192,temperature:.25,top_p:.9,top_k:40,stream:true,abortSignal:controller.signal});
     let ans="";
     for await(const chunk of stream){const delta=chunk?.choices?.[0]?.delta?.content||"";if(delta){if(!gotToken){gotToken=true;if(ticker){clearInterval(ticker);ticker=null;}}ans+=delta;bubble.textContent=ans;$("chat").scrollTop=$("chat").scrollHeight;}}
     if(!ans)bubble.textContent="I couldn't produce an answer.";
     if(page){const d=document.createElement("div");d.className="sources";d.innerHTML="<strong>Source</strong>";const a=document.createElement("a");a.target="_blank";a.rel="noopener";a.href=page.url;a.textContent=page.title;d.appendChild(a);bubble.appendChild(d);}
-    if(ans&&!isNewsSummary){recent.push({role:"user",content:q},{role:"assistant",content:ans});if(recent.length>6)recent=recent.slice(-6);sessionStorage.setItem(CHAT_KEY,JSON.stringify(recent));}
+    if(ans&&!isExternalContext){recent.push({role:"user",content:q},{role:"assistant",content:ans});if(recent.length>6)recent=recent.slice(-6);sessionStorage.setItem(CHAT_KEY,JSON.stringify(recent));}
   }catch(e){if(controller.signal.aborted){if(bubble&&!gotToken)bubble.textContent="Stopped.";}else add("system","Generation failed: "+(e?.message||e));}
   finally{if(ticker)clearInterval(ticker);if(generationAbort===controller)generationAbort=null;btn.textContent="Send";}
 }
@@ -102,15 +102,24 @@ n = re.sub(
 )
 news.write_text(n)
 
+web = Path("dist/web-search.js")
+ws = web.read_text()
+ws = re.sub(r'const VERSION = "PWA v[^"]+";', f'const VERSION = "{BADGE}";', ws, count=1)
+web.write_text(ws)
+
 index = Path("dist/index.html")
 h = index.read_text()
-h = re.sub(r'PWA v[0-9.]+(?: SERVER NEWS| NEWS| CPU)?', BADGE, h)
+h = re.sub(r'PWA v[0-9.]+(?: SERVER NEWS| NEWS| CPU| WEB)?', BADGE, h)
 h = re.sub(r'PocketMind v[0-9.]+', f'PocketMind v{VERSION}', h)
 h = re.sub(r'<title>.*?</title>', f'<title>PocketMind AI v{VERSION}</title>', h, count=1)
+if 'web-search.js' not in h:
+    h = h.replace('</body>', '<script src="web-search.js"></script>\n</body>')
 index.write_text(h)
 
 sw = Path("dist/sw.js")
 w = sw.read_text()
-w = re.sub(r'pocketmind-shell-v[0-9]+', 'pocketmind-shell-v0920', w, count=1)
-w = re.sub(r'pocketmind-news-v[0-9]+', 'pocketmind-news-v0920', w, count=1)
+w = re.sub(r'pocketmind-shell-v[0-9]+', 'pocketmind-shell-v1000', w, count=1)
+w = re.sub(r'pocketmind-news-v[0-9]+', 'pocketmind-news-v1000', w, count=1)
+if '"./web-search.js"' not in w:
+    w = w.replace('"./news-v09.js",', '"./news-v09.js",\n  "./web-search.js",')
 sw.write_text(w)
