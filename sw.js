@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocketmind-shell-v051";
+const CACHE_NAME = "pocketmind-shell-v0522";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -34,7 +34,7 @@ self.addEventListener("fetch", event => {
   const url = new URL(req.url);
 
   // Only manage same-origin PWA files here.
-  // Model/runtime files are cached by their own browser/CDN mechanisms.
+  // Model/runtime CDN files are cached by their own browser/CDN mechanisms.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
