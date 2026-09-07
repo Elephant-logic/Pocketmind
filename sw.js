@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocketmind-shell-v04";
+const CACHE_NAME = "pocketmind-shell-v041";
 const APP_SHELL = [
   "./",
   "./index.html",
