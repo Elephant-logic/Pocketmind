@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>PocketMind AI v0.8.1</title>
+<title>PocketMind AI v0.9</title>
 <style>
 :root{color-scheme:dark;--bg:#0d1117;--panel:#161b22;--panel2:#202938;--panel3:#0f141b;--text:#e6edf3;--muted:#8b949e;--accent:#2f81f7;--border:#30363d;--good:#3fb950;--warn:#d29922;--bad:#f85149}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text)}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;overflow:hidden}
@@ -24,18 +24,18 @@ main{min-width:0;flex:1;display:flex;flex-direction:column}header{min-height:64p
 <body>
 <div id="originBlock"><div class="card"><h2>PocketMind needs HTTPS</h2><p>This app must be served from <strong>HTTPS</strong> (or localhost for development).</p><div class="callout">Open the GitHub Pages HTTPS address rather than a downloaded local file.</div></div></div>
 <aside>
-<h1>PocketMind</h1><p>Local AI brain + internet research</p>
+<h1>PocketMind</h1><p>Local AI brain + server-fetched internet news</p>
 <section><h3>App</h3><div class="status">HTTPS/secure: <span id="secureState">checking…</span></div><div class="status">Installed: <span id="installedState">checking…</span></div><button id="installBtn" class="primary installHidden">Install PocketMind</button></section>
-<section><h3>Local AI</h3><div class="status">WebGPU: <span id="gpuState">checking…</span></div><div class="status">shader-f16: <span id="f16State">checking…</span></div><div class="status">Model: <span id="modelState">not loaded</span></div><select id="modelSelect"><option value="auto">Auto — CPU/WASM on Android, WebGPU elsewhere</option><option value="cpu">SmolLM2 360M CPU/WASM — ~271 MB download</option><option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M WebGPU f32</option><option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M WebGPU f16</option></select><div class="row"><button class="primary" id="loadModelBtn">Load local AI</button><button id="unloadBtn" disabled>Unload</button></div><div class="progressOuter"><div id="progressBar"></div></div><div id="progressText">Bundled CPU model + live headlines-first news.</div><button id="diagnosticBtn">Run connection test</button></section>
-<section><h3>Internet</h3><select id="researchMode"><option value="auto">Auto research</option><option value="always">Always research first</option><option value="never">Never use web</option></select><div class="status">Network: <span id="network">…</span></div><div class="status">Research: live headlines + browser fallback + optional local summary</div></section>
+<section><h3>Local AI</h3><div class="status">WebGPU: <span id="gpuState">checking…</span></div><div class="status">shader-f16: <span id="f16State">checking…</span></div><div class="status">Model: <span id="modelState">not loaded</span></div><select id="modelSelect"><option value="auto">Auto — CPU/WASM on Android, WebGPU elsewhere</option><option value="cpu">SmolLM2 360M CPU/WASM — ~271 MB download</option><option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M WebGPU f32</option><option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M WebGPU f16</option></select><div class="row"><button class="primary" id="loadModelBtn">Load local AI</button><button id="unloadBtn" disabled>Unload</button></div><div class="progressOuter"><div id="progressBar"></div></div><div id="progressText">Bundled CPU model + same-origin server news.</div><button id="diagnosticBtn">Run connection test</button></section>
+<section><h3>Internet</h3><select id="researchMode"><option value="auto">Auto research</option><option value="always">Always research first</option><option value="never">Never use web</option></select><div class="status">Network: <span id="network">…</span></div><div class="status">News: BBC + Sky + Guardian fetched server-side every ~15 min</div></section>
 <section><h3>Memory</h3><div class="status">Saved: <span id="memoryCount">0</span></div><div class="row"><button id="addMemoryBtn">Add</button><button id="clearMemoryBtn">Clear</button></div><div id="memoryList"></div></section>
 </aside>
 <main>
-<header><div><strong>PocketMind</strong><span class="badge">PWA v0.8.1 NEWS</span></div><span id="networkTop" class="small"></span></header>
-<div id="chat"><div id="mobileCard"><strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br><span id="mobileCompat">Checking phone compatibility…</span><br><button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button><button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button><div id="mobileProgress" style="margin-top:8px"></div></div><div class="msg assistant"><div class="who">PocketMind</div><div class="bubble">PocketMind v0.8.1 keeps normal questions local. For current news it tries a normal live request first and automatically falls back to browser-safe JSONP if that request is blocked.</div></div></div>
+<header><div><strong>PocketMind</strong><span class="badge">PWA v0.9 SERVER NEWS</span></div><span id="networkTop" class="small"></span></header>
+<div id="chat"><div id="mobileCard"><strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br><span id="mobileCompat">Checking phone compatibility…</span><br><button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button><button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button><div id="mobileProgress" style="margin-top:8px"></div></div><div class="msg assistant"><div class="who">PocketMind</div><div class="bubble">PocketMind v0.9 keeps normal questions local. Current UK/world headlines are fetched on GitHub's servers from BBC, Sky News and The Guardian, then published as a same-origin news snapshot. Your phone no longer contacts the news providers directly. Tap “Summarise locally” only when you want the on-device AI to analyse the headlines.</div></div></div>
 <div class="composer"><div class="composeInner"><textarea id="input" placeholder="Ask PocketMind something…"></textarea><button id="send" class="primary">Send</button></div></div>
 </main>
 <script src="cpu.js" type="module"></script>
-<script src="news-v08.js"></script>
+<script src="news-v09.js"></script>
 </body>
 </html>
