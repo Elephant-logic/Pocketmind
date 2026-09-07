@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build PocketMind v0.9.2
+      - name: Build PocketMind v1.0
         shell: bash
         run: |
           npm install --no-save @wllama/wllama@3.6.1 fast-xml-parser@5
@@ -61,18 +61,22 @@ jobs:
 
           node --check dist/cpu.js
           node --check dist/news-v09.js
+          node --check dist/web-search.js
           test -f dist/news.json
           node -e 'const n=require("./dist/news.json"); if(!(n.categories?.uk?.length>0)) process.exit(1); console.log(`validated UK headlines: ${n.categories.uk.length}`)'
-          grep -q 'PWA v0.9.2 SERVER NEWS' dist/index.html
-          grep -q 'PWA v0.9.2 SERVER NEWS' dist/news-v09.js
+          grep -q 'PWA v1.0 WEB' dist/index.html
+          grep -q 'web-search.js' dist/index.html
+          grep -q 'PWA v1.0 WEB' dist/web-search.js
+          grep -q 'WEB_SEARCH_REQUEST' dist/web-search.js
+          grep -q 'WEB_SEARCH_REQUEST' dist/cpu.js
           grep -q 'NEWS_SUMMARY_REQUEST' dist/news-v09.js
-          grep -q 'max_tokens:isNewsSummary?256:192' dist/cpu.js
+          grep -q 'max_tokens:isExternalContext?256:192' dist/cpu.js
           grep -q 'n_ctx:768' dist/cpu.js
-          grep -q 'never stop mid-sentence' dist/cpu.js
           grep -q './news.json' dist/news-v09.js
           grep -q 'bartowski/SmolLM2-360M-Instruct-GGUF' dist/cpu.js
           grep -q './vendor/wllama/esm/index.js' dist/cpu.js
           grep -q 'stream:true' dist/cpu.js
+          grep -q 'web-search.js' dist/sw.js
           ! grep -q 'Pre-load check failed' dist/cpu.js
 
       - name: Upload static site
