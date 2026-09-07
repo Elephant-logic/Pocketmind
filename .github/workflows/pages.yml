@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build PocketMind v0.6
+      - name: Build PocketMind v0.6.1
         shell: bash
         run: |
           npm install --no-save @wllama/wllama@3.6.1
@@ -59,13 +59,14 @@ jobs:
 
           cpu = Path('dist/cpu.js')
           s = cpu.read_text()
+          s = s.replace('tensorblock/SmolLM2-360M-Instruct-GGUF', 'bartowski/SmolLM2-360M-Instruct-GGUF')
           s = re.sub(
               r'async function diagnostic\(show=true\)\{.*?\n\}\nasync function load\(\)',
               '''async function diagnostic(show=true){
             if(!allowed()){if(show)add("system","PocketMind needs HTTPS.");return false;}
             if(!navigator.onLine){if(show)add("system","The first model download needs internet.");return false;}
             progress(0,"No pre-load gate. The bundled CPU runtime will be tested by Load local AI.");
-            if(show)add("system","PocketMind v0.6 bundles its CPU runtime with the app. Tap Load local AI to try the real runtime directly.");
+            if(show)add("system","PocketMind v0.6.1 bundles its CPU runtime with the app. Tap Load local AI to try the real runtime directly.");
             return true;
           }
           async function load()''',
@@ -77,24 +78,25 @@ jobs:
           s = s.replace('default:"https://cdn.jsdelivr.net/npm/@wllama/wllama@3.6.1/esm/wasm/wllama.wasm"', 'default:"./vendor/wllama/esm/wasm/wllama.wasm"')
           s = re.sub(r'\n\s*// Force the plain CPU/WASM path.*?try\{engine\.setCompat\(null\);\}catch\(e\)\{\}', '', s, flags=re.S)
           s = s.replace('{n_ctx:768,n_batch:64,n_threads:1,n_gpu_layers:0', '{n_ctx:512,n_batch:16,n_threads:1,n_gpu_layers:0')
-          s = s.replace('PocketMind v0.5.2 is using CPU/WebAssembly', 'PocketMind v0.6 is using bundled CPU/WebAssembly')
+          s = s.replace('PocketMind v0.5.2 is using CPU/WebAssembly', 'PocketMind v0.6.1 is using bundled CPU/WebAssembly')
           cpu.write_text(s)
 
           index = Path('dist/index.html')
           h = index.read_text()
-          h = h.replace('PWA v0.5.2 CPU', 'PWA v0.6 CPU')
+          h = h.replace('PWA v0.5.2 CPU', 'PWA v0.6.1 CPU')
           h = h.replace('Run the compatibility check, then download the model once.', 'Bundled CPU runtime: no external module CDN and no pre-load gate.')
-          h = h.replace('<title>PocketMind AI v0.5</title>', '<title>PocketMind AI v0.6</title>')
+          h = h.replace('<title>PocketMind AI v0.5</title>', '<title>PocketMind AI v0.6.1</title>')
           index.write_text(h)
 
           sw = Path('dist/sw.js')
           w = sw.read_text()
-          w = re.sub(r'pocketmind-shell-v[^"\']+', 'pocketmind-shell-v0600', w, count=1)
+          w = re.sub(r'pocketmind-shell-v[^"\']+', 'pocketmind-shell-v0610', w, count=1)
           sw.write_text(w)
           PY
 
           node --check dist/cpu.js
-          grep -q 'PWA v0.6 CPU' dist/index.html
+          grep -q 'PWA v0.6.1 CPU' dist/index.html
+          grep -q 'bartowski/SmolLM2-360M-Instruct-GGUF' dist/cpu.js
           grep -q './vendor/wllama/esm/index.js' dist/cpu.js
           grep -q './vendor/wllama/esm/wasm/wllama.wasm' dist/cpu.js
           ! grep -q 'Pre-load check failed' dist/cpu.js
