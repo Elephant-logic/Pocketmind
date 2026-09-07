@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>PocketMind AI v0.5.1</title>
+<title>PocketMind AI v0.5</title>
 <style>
 :root{
   color-scheme:dark;
@@ -111,8 +111,15 @@ header{
     <h2>PocketMind needs HTTPS</h2>
     <p>
       This copy is being opened as a local/downloaded file. A real installable PWA and
-      reliable browser storage need the site to be served from <strong>HTTPS</strong>
+      reliable WebGPU model loading need the site to be served from <strong>HTTPS</strong>
       (or localhost for development).
+    </p>
+    <div class="callout">
+      Upload the whole PocketMind-PWA-v0.4 folder to a static HTTPS host, then open that
+      web address on your phone. GitHub Pages instructions are included in the ZIP.
+    </div>
+    <p class="small">
+      Nothing is wrong with your phone just because this screen appears — it is an origin/security restriction.
     </p>
   </div>
 </div>
@@ -130,12 +137,15 @@ header{
 
   <section>
     <h3>Local AI</h3>
-    <div class="status">WebGPU: <span id="gpuState">bypassed</span></div>
-    <div class="status">shader-f16: <span id="f16State">not needed</span></div>
+    <div class="status">WebGPU: <span id="gpuState">checking…</span></div>
+    <div class="status">shader-f16: <span id="f16State">checking…</span></div>
     <div class="status">Model: <span id="modelState">not loaded</span></div>
 
     <select id="modelSelect">
-      <option value="cpu">CPU/WebAssembly — SmolLM2 360M Q4</option>
+      <option value="auto">Auto — CPU/WASM on Android, WebGPU elsewhere</option>
+      <option value="cpu">SmolLM2 360M CPU/WASM — ~271 MB download</option>
+      <option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M WebGPU f32</option>
+      <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M WebGPU f16</option>
     </select>
 
     <div class="row">
@@ -144,7 +154,7 @@ header{
     </div>
 
     <div class="progressOuter"><div id="progressBar"></div></div>
-    <div id="progressText">CPU/WebAssembly mode avoids the WebGPU crash seen on this phone.</div>
+    <div id="progressText">Run the compatibility check, then download the model once.</div>
     <button id="diagnosticBtn">Run connection test</button>
   </section>
 
@@ -172,14 +182,14 @@ header{
 
 <main>
 <header>
-  <div><strong>PocketMind</strong><span class="badge">PWA v0.5.1 CPU</span></div>
+  <div><strong>PocketMind</strong><span class="badge">PWA v0.5.2 CPU</span></div>
   <span id="networkTop" class="small"></span>
 </header>
 
 <div id="chat">
   <div id="mobileCard">
     <strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br>
-    <span id="mobileCompat">CPU/WebAssembly mode — WebGPU is bypassed.</span><br>
+    <span id="mobileCompat">Checking phone compatibility…</span><br>
     <button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button>
     <button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button>
     <div id="mobileProgress" style="margin-top:8px"></div>
@@ -187,9 +197,12 @@ header{
 
   <div class="msg assistant">
     <div class="who">PocketMind</div>
-    <div class="bubble">PocketMind v0.5.1 uses CPU/WebAssembly on this phone instead of WebGPU. It is slower, but it avoids the GPUBuffer crash your phone was hitting.
+    <div class="bubble">This build is an installable local-first app with an Android CPU/WebAssembly fallback.
 
-Tap “Load local AI”. The first CPU model download is about 271 MB; after that the browser can reuse its cache.</div>
+1. Install it from your browser if the Install button appears.
+2. Tap “Load local AI”. On Android, PocketMind uses CPU/WebAssembly to avoid WebGPU driver crashes.
+3. The model downloads once and is cached by the browser.
+4. Ask normally. When current/reference information is needed, PocketMind can research it and let the local model reason over the result.</div>
   </div>
 </div>
 
