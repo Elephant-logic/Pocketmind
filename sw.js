@@ -1,5 +1,5 @@
-const CACHE_NAME = "pocketmind-shell-v0900";
-const NEWS_CACHE = "pocketmind-news-v0900";
+const CACHE_NAME = "pocketmind-shell-v0910";
+const NEWS_CACHE = "pocketmind-news-v0910";
 const APP_SHELL = [
   "./",
   "./index.html",
