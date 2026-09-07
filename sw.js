@@ -1,10 +1,11 @@
-const CACHE_NAME = "pocketmind-news-shell-0800";
+const CACHE_NAME = "pocketmind-shell-v0900";
+const NEWS_CACHE = "pocketmind-news-v0900";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./app.js",
   "./cpu.js",
-  "./news-v08.js",
+  "./news-v09.js",
   "./webllm-worker.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
@@ -20,62 +21,64 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => ![CACHE_NAME, NEWS_CACHE].includes(k)).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-async function withNewsUI(response) {
-  if (!response) return response;
-  const type = response.headers.get("content-type") || "";
-  if (!type.includes("text/html")) return response;
-  let html = await response.text();
-  if (!html.includes("news-v08.js")) {
-    html = html.replace("</body>", '<script src="./news-v08.js"></script>\n</body>');
-  }
-  const headers = new Headers(response.headers);
-  headers.set("content-type", "text/html; charset=utf-8");
-  headers.delete("content-length");
-  return new Response(html, { status: response.status, statusText: response.statusText, headers });
-}
-
 self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
-
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
   const isPage = req.mode === "navigate" || url.pathname.endsWith("/") || url.pathname.endsWith("/index.html");
+  const isNews = url.pathname.endsWith("/news.json");
+
+  if (isNews) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req, { cache: "no-store" });
+        if (fresh && fresh.ok) {
+          const cache = await caches.open(NEWS_CACHE);
+          await cache.put("./news.json", fresh.clone());
+        }
+        return fresh;
+      } catch (_) {
+        const cache = await caches.open(NEWS_CACHE);
+        return (await cache.match("./news.json")) || new Response(JSON.stringify({ error: "news unavailable" }), {
+          status: 503,
+          headers: { "content-type": "application/json" }
+        });
+      }
+    })());
+    return;
+  }
 
   if (isPage) {
     event.respondWith((async () => {
-      let response;
       try {
-        response = await fetch(req, { cache: "no-store" });
-        if (response && response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+        const fresh = await fetch(req, { cache: "no-store" });
+        if (fresh && fresh.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(req, fresh.clone());
         }
+        return fresh;
       } catch (_) {
-        response = await caches.match(req) || await caches.match("./index.html");
+        return (await caches.match(req)) || (await caches.match("./index.html"));
       }
-      return withNewsUI(response);
     })());
     return;
   }
 
   event.respondWith(
-    caches.match(req).then(cached => {
-      const network = fetch(req).then(resp => {
-        if (resp && resp.ok) {
-          const copy = resp.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        }
-        return resp;
-      }).catch(() => cached);
-      return cached || network;
-    })
+    caches.match(req).then(cached => cached || fetch(req).then(async resp => {
+      if (resp && resp.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(req, resp.clone());
+      }
+      return resp;
+    }))
   );
 });
