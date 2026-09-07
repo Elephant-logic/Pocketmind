@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>PocketMind AI v0.9</title>
+<title>PocketMind AI v0.9.1</title>
 <style>
 :root{color-scheme:dark;--bg:#0d1117;--panel:#161b22;--panel2:#202938;--panel3:#0f141b;--text:#e6edf3;--muted:#8b949e;--accent:#2f81f7;--border:#30363d;--good:#3fb950;--warn:#d29922;--bad:#f85149}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text)}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;overflow:hidden}
@@ -31,8 +31,8 @@ main{min-width:0;flex:1;display:flex;flex-direction:column}header{min-height:64p
 <section><h3>Memory</h3><div class="status">Saved: <span id="memoryCount">0</span></div><div class="row"><button id="addMemoryBtn">Add</button><button id="clearMemoryBtn">Clear</button></div><div id="memoryList"></div></section>
 </aside>
 <main>
-<header><div><strong>PocketMind</strong><span class="badge">PWA v0.9 SERVER NEWS</span></div><span id="networkTop" class="small"></span></header>
-<div id="chat"><div id="mobileCard"><strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br><span id="mobileCompat">Checking phone compatibility…</span><br><button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button><button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button><div id="mobileProgress" style="margin-top:8px"></div></div><div class="msg assistant"><div class="who">PocketMind</div><div class="bubble">PocketMind v0.9 keeps normal questions local. Current UK/world headlines are fetched on GitHub's servers from BBC, Sky News and The Guardian, then published as a same-origin news snapshot. Your phone no longer contacts the news providers directly. Tap “Summarise locally” only when you want the on-device AI to analyse the headlines.</div></div></div>
+<header><div><strong>PocketMind</strong><span class="badge">PWA v0.9.1 SERVER NEWS</span></div><span id="networkTop" class="small"></span></header>
+<div id="chat"><div id="mobileCard"><strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br><span id="mobileCompat">Checking phone compatibility…</span><br><button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button><button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button><div id="mobileProgress" style="margin-top:8px"></div></div><div class="msg assistant"><div class="who">PocketMind</div><div class="bubble">PocketMind v0.9.1 keeps normal questions local and now gives the local model more room to finish complete answers. Current UK/world headlines are fetched on GitHub's servers from BBC, Sky News and The Guardian, then published as a same-origin news snapshot. Tap “Summarise locally” only when you want the on-device AI to analyse the headlines.</div></div></div>
 <div class="composer"><div class="composeInner"><textarea id="input" placeholder="Ask PocketMind something…"></textarea><button id="send" class="primary">Send</button></div></div>
 </main>
 <script src="cpu.js" type="module"></script>
