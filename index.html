@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>PocketMind AI v0.5</title>
+<title>PocketMind AI v0.8</title>
 <style>
 :root{
   color-scheme:dark;
@@ -20,200 +20,47 @@
 html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text)}
 body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;overflow:hidden}
 button,select,textarea,input{font:inherit}
-button,select{
-  background:#21262d;color:var(--text);border:1px solid var(--border);
-  border-radius:10px;padding:10px 12px
-}
-button{cursor:pointer}
-button:disabled{opacity:.5;cursor:not-allowed}
-.primary{background:var(--accent);border-color:var(--accent)}
+button,select{background:#21262d;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.primary{background:var(--accent);border-color:var(--accent)}
 .good{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
-aside{
-  width:330px;background:var(--panel);border-right:1px solid var(--border);
-  padding:18px;overflow:auto;flex-shrink:0
-}
-aside h1{font-size:20px;margin:0 0 4px}
-aside p,.small{font-size:12px;color:var(--muted);line-height:1.5}
-section{margin:22px 0}
-section h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 9px}
+aside{width:330px;background:var(--panel);border-right:1px solid var(--border);padding:18px;overflow:auto;flex-shrink:0}
+aside h1{font-size:20px;margin:0 0 4px}aside p,.small{font-size:12px;color:var(--muted);line-height:1.5}
+section{margin:22px 0}section h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 9px}
 .status{font-size:12px;color:var(--muted);padding:7px 0;border-bottom:1px solid rgba(48,54,61,.5)}
-.progressOuter{
-  height:8px;border-radius:999px;background:#0b0e13;border:1px solid var(--border);
-  overflow:hidden;margin:9px 0 6px
-}
-#progressBar{height:100%;width:0;background:var(--accent);transition:width .15s}
-#progressText{font-size:11px;color:var(--muted);min-height:34px}
-#modelSelect,#researchMode{width:100%;margin-bottom:8px}
-.row{display:flex;gap:7px}.row>*{flex:1}
-.memory{font-size:12px;border:1px solid var(--border);border-radius:9px;padding:9px;margin:8px 0}
-main{min-width:0;flex:1;display:flex;flex-direction:column}
-header{
-  min-height:64px;display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;border-bottom:1px solid var(--border)
-}
-.badge{
-  font-size:12px;color:var(--muted);border:1px solid var(--border);
-  border-radius:999px;padding:4px 9px;margin-left:8px
-}
-#chat{flex:1;overflow:auto;padding:26px}
-.msg{max-width:860px;margin:0 auto 22px}
-.who{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
-.bubble{
-  background:var(--panel);border-radius:16px;padding:16px 18px;
-  white-space:pre-wrap;line-height:1.58;overflow-wrap:anywhere
-}
-.user .bubble{background:var(--panel2)}
-.system .bubble{background:var(--panel3);border:1px solid var(--border);font-size:13px;color:var(--muted)}
-.sources{font-size:12px;margin-top:14px;color:var(--muted)}
-.sources a{display:block;color:#58a6ff;text-decoration:none;margin-top:5px}
-.composer{
-  border-top:1px solid var(--border);
-  padding:14px 18px max(14px,env(safe-area-inset-bottom));
-  background:var(--panel)
-}
-.composeInner{max-width:920px;margin:auto;display:flex;gap:10px}
-.composeInner textarea{
-  flex:1;min-height:58px;max-height:160px;resize:vertical;background:var(--bg);
-  color:var(--text);border:1px solid var(--border);border-radius:12px;padding:13px
-}
-#mobileCard{
-  display:none;max-width:860px;margin:0 auto 18px;padding:14px;border:1px solid var(--border);
-  border-radius:14px;background:var(--panel3);font-size:13px;color:var(--muted);line-height:1.5
-}
-#originBlock{
-  position:fixed;inset:0;background:rgba(13,17,23,.98);z-index:1000;
-  display:none;align-items:center;justify-content:center;padding:24px
-}
-#originBlock .card{
-  max-width:600px;background:var(--panel);border:1px solid var(--border);
-  border-radius:18px;padding:22px;line-height:1.55
-}
-#originBlock h2{margin-top:0}
-.callout{
-  padding:11px 12px;border:1px solid var(--border);border-radius:11px;
-  background:var(--panel3);font-size:12px;color:var(--muted);margin:9px 0
-}
-.installHidden{display:none}
-@media(max-width:760px){
-  aside{display:none}
-  header{padding:0 18px}
-  #chat{padding:20px 24px}
-  .bubble{font-size:17px}
-  .composeInner textarea{font-size:16px}
-  #mobileCard{display:block}
-}
+.progressOuter{height:8px;border-radius:999px;background:#0b0e13;border:1px solid var(--border);overflow:hidden;margin:9px 0 6px}
+#progressBar{height:100%;width:0;background:var(--accent);transition:width .15s}#progressText{font-size:11px;color:var(--muted);min-height:34px}
+#modelSelect,#researchMode{width:100%;margin-bottom:8px}.row{display:flex;gap:7px}.row>*{flex:1}.memory{font-size:12px;border:1px solid var(--border);border-radius:9px;padding:9px;margin:8px 0}
+main{min-width:0;flex:1;display:flex;flex-direction:column}header{min-height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border)}
+.badge{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:4px 9px;margin-left:8px}
+#chat{flex:1;overflow:auto;padding:26px}.msg{max-width:860px;margin:0 auto 22px}.who{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.bubble{background:var(--panel);border-radius:16px;padding:16px 18px;white-space:pre-wrap;line-height:1.58;overflow-wrap:anywhere}.user .bubble{background:var(--panel2)}.system .bubble{background:var(--panel3);border:1px solid var(--border);font-size:13px;color:var(--muted)}
+.sources{font-size:12px;margin-top:14px;color:var(--muted)}.sources a{display:block;color:#58a6ff;text-decoration:none;margin-top:5px}
+.composer{border-top:1px solid var(--border);padding:14px 18px max(14px,env(safe-area-inset-bottom));background:var(--panel)}.composeInner{max-width:920px;margin:auto;display:flex;gap:10px}.composeInner textarea{flex:1;min-height:58px;max-height:160px;resize:vertical;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:13px}
+#mobileCard{display:none;max-width:860px;margin:0 auto 18px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--panel3);font-size:13px;color:var(--muted);line-height:1.5}
+#originBlock{position:fixed;inset:0;background:rgba(13,17,23,.98);z-index:1000;display:none;align-items:center;justify-content:center;padding:24px}#originBlock .card{max-width:600px;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px;line-height:1.55}#originBlock h2{margin-top:0}.callout{padding:11px 12px;border:1px solid var(--border);border-radius:11px;background:var(--panel3);font-size:12px;color:var(--muted);margin:9px 0}.installHidden{display:none}
+@media(max-width:760px){aside{display:none}header{padding:0 18px}#chat{padding:20px 24px}.bubble{font-size:17px}.composeInner textarea{font-size:16px}#mobileCard{display:block}}
 </style>
 </head>
 <body>
-
-<div id="originBlock">
-  <div class="card">
-    <h2>PocketMind needs HTTPS</h2>
-    <p>
-      This copy is being opened as a local/downloaded file. A real installable PWA and
-      reliable WebGPU model loading need the site to be served from <strong>HTTPS</strong>
-      (or localhost for development).
-    </p>
-    <div class="callout">
-      Upload the whole PocketMind-PWA-v0.4 folder to a static HTTPS host, then open that
-      web address on your phone. GitHub Pages instructions are included in the ZIP.
-    </div>
-    <p class="small">
-      Nothing is wrong with your phone just because this screen appears — it is an origin/security restriction.
-    </p>
-  </div>
-</div>
-
+<div id="originBlock"><div class="card"><h2>PocketMind needs HTTPS</h2><p>This app must be served from <strong>HTTPS</strong> (or localhost for development).</p><div class="callout">Open the GitHub Pages HTTPS address rather than a downloaded local file.</div></div></div>
 <aside>
-  <h1>PocketMind</h1>
-  <p>Local AI brain + internet research</p>
-
-  <section>
-    <h3>App</h3>
-    <div class="status">HTTPS/secure: <span id="secureState">checking…</span></div>
-    <div class="status">Installed: <span id="installedState">checking…</span></div>
-    <button id="installBtn" class="primary installHidden">Install PocketMind</button>
-  </section>
-
-  <section>
-    <h3>Local AI</h3>
-    <div class="status">WebGPU: <span id="gpuState">checking…</span></div>
-    <div class="status">shader-f16: <span id="f16State">checking…</span></div>
-    <div class="status">Model: <span id="modelState">not loaded</span></div>
-
-    <select id="modelSelect">
-      <option value="auto">Auto — CPU/WASM on Android, WebGPU elsewhere</option>
-      <option value="cpu">SmolLM2 360M CPU/WASM — ~271 MB download</option>
-      <option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M WebGPU f32</option>
-      <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M WebGPU f16</option>
-    </select>
-
-    <div class="row">
-      <button class="primary" id="loadModelBtn">Load local AI</button>
-      <button id="unloadBtn" disabled>Unload</button>
-    </div>
-
-    <div class="progressOuter"><div id="progressBar"></div></div>
-    <div id="progressText">Run the compatibility check, then download the model once.</div>
-    <button id="diagnosticBtn">Run connection test</button>
-  </section>
-
-  <section>
-    <h3>Internet</h3>
-    <select id="researchMode">
-      <option value="auto">Auto research</option>
-      <option value="always">Always research first</option>
-      <option value="never">Never use web</option>
-    </select>
-    <div class="status">Network: <span id="network">…</span></div>
-    <div class="status">Research source: Wikipedia</div>
-  </section>
-
-  <section>
-    <h3>Memory</h3>
-    <div class="status">Saved: <span id="memoryCount">0</span></div>
-    <div class="row">
-      <button id="addMemoryBtn">Add</button>
-      <button id="clearMemoryBtn">Clear</button>
-    </div>
-    <div id="memoryList"></div>
-  </section>
+  <h1>PocketMind</h1><p>Local AI brain + internet research</p>
+  <section><h3>App</h3><div class="status">HTTPS/secure: <span id="secureState">checking…</span></div><div class="status">Installed: <span id="installedState">checking…</span></div><button id="installBtn" class="primary installHidden">Install PocketMind</button></section>
+  <section><h3>Local AI</h3><div class="status">WebGPU: <span id="gpuState">checking…</span></div><div class="status">shader-f16: <span id="f16State">checking…</span></div><div class="status">Model: <span id="modelState">not loaded</span></div>
+    <select id="modelSelect"><option value="auto">Auto — CPU/WASM on Android, WebGPU elsewhere</option><option value="cpu">SmolLM2 360M CPU/WASM — ~271 MB download</option><option value="SmolLM2-360M-Instruct-q4f32_1-MLC">SmolLM2 360M WebGPU f32</option><option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M WebGPU f16</option></select>
+    <div class="row"><button class="primary" id="loadModelBtn">Load local AI</button><button id="unloadBtn" disabled>Unload</button></div><div class="progressOuter"><div id="progressBar"></div></div><div id="progressText">Bundled CPU model + live headlines-first news.</div><button id="diagnosticBtn">Run connection test</button></section>
+  <section><h3>Internet</h3><select id="researchMode"><option value="auto">Auto research</option><option value="always">Always research first</option><option value="never">Never use web</option></select><div class="status">Network: <span id="network">…</span></div><div class="status">Research: live headlines first + optional local summary</div></section>
+  <section><h3>Memory</h3><div class="status">Saved: <span id="memoryCount">0</span></div><div class="row"><button id="addMemoryBtn">Add</button><button id="clearMemoryBtn">Clear</button></div><div id="memoryList"></div></section>
 </aside>
-
 <main>
-<header>
-  <div><strong>PocketMind</strong><span class="badge">PWA v0.5.2 CPU</span></div>
-  <span id="networkTop" class="small"></span>
-</header>
-
+<header><div><strong>PocketMind</strong><span class="badge">PWA v0.8 NEWS</span></div><span id="networkTop" class="small"></span></header>
 <div id="chat">
-  <div id="mobileCard">
-    <strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br>
-    <span id="mobileCompat">Checking phone compatibility…</span><br>
-    <button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button>
-    <button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button>
-    <div id="mobileProgress" style="margin-top:8px"></div>
-  </div>
-
-  <div class="msg assistant">
-    <div class="who">PocketMind</div>
-    <div class="bubble">This build is an installable local-first app with an Android CPU/WebAssembly fallback.
-
-1. Install it from your browser if the Install button appears.
-2. Tap “Load local AI”. On Android, PocketMind uses CPU/WebAssembly to avoid WebGPU driver crashes.
-3. The model downloads once and is cached by the browser.
-4. Ask normally. When current/reference information is needed, PocketMind can research it and let the local model reason over the result.</div>
-  </div>
+  <div id="mobileCard"><strong>Local AI:</strong> <span id="mobileModelState">not loaded</span><br><span id="mobileCompat">Checking phone compatibility…</span><br><button class="primary" id="mobileLoadBtn" style="margin-top:10px">Load local AI</button><button id="mobileInstallBtn" class="installHidden" style="margin-top:10px">Install app</button><div id="mobileProgress" style="margin-top:8px"></div></div>
+  <div class="msg assistant"><div class="who">PocketMind</div><div class="bubble">PocketMind v0.8 keeps normal questions local. For current news it shows live source headlines first, then you can choose “Summarise locally” if you want the phone AI to analyse them.</div></div>
 </div>
-
-<div class="composer">
-  <div class="composeInner">
-    <textarea id="input" placeholder="Ask PocketMind something…"></textarea>
-    <button id="send" class="primary">Send</button>
-  </div>
-</div>
+<div class="composer"><div class="composeInner"><textarea id="input" placeholder="Ask PocketMind something…"></textarea><button id="send" class="primary">Send</button></div></div>
 </main>
-
 <script src="cpu.js" type="module"></script>
+<script src="news-v08.js"></script>
 </body>
 </html>
