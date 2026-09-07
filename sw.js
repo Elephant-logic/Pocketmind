@@ -1,8 +1,8 @@
-const CACHE_NAME = "pocketmind-shell-v041";
+const CACHE_NAME = "pocketmind-shell-v0501";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./app.js",
+  "./cpu.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -10,17 +10,13 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
   );
   self.clients.claim();
 });
@@ -28,11 +24,7 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
-
   const url = new URL(req.url);
-
-  // Only manage same-origin PWA files here.
-  // WebLLM model files are cached by WebLLM itself.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
@@ -44,7 +36,6 @@ self.addEventListener("fetch", event => {
         }
         return resp;
       }).catch(() => cached);
-
       return cached || network;
     })
   );
