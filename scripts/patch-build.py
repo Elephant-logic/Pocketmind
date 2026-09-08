@@ -99,7 +99,7 @@ s = s.replace(
 # Stream answers, then automatically continue once if the model hits its output ceiling.
 s = re.sub(
     r'async function send\(\)\{.*?\n\}\nfunction addMemory',
-    r'''async function send(){
+    lambda _: r'''async function send(){
   const inp=$("input"),btn=$("send");
   if(generationAbort){generationAbort.abort();return;}
   const q=inp.value.trim();if(!q)return;
@@ -160,7 +160,7 @@ s = s.replace(
 )
 cpu.write_text(s)
 
-# Keep the working server-fetched news and v1.0 web lookup UI, only bump the version.
+# Keep the working server-fetched news and web lookup UI, only bump the version.
 news = Path("dist/news-v09.js")
 n = news.read_text()
 n = re.sub(r'const VERSION = "PWA v[^"]+";', f'const VERSION = "{BADGE}";', n, count=1)
