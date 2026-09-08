@@ -13,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pocketmind-pages-v11"
+  group: "pocketmind-pages-v12"
   cancel-in-progress: true
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build PocketMind v1.1
+      - name: Build PocketMind v1.2
         shell: bash
         run: |
           npm install --no-save @wllama/wllama@3.6.1 fast-xml-parser@5
@@ -56,33 +56,33 @@ jobs:
           test -f dist/vendor/wllama/esm/index.js
           test -f dist/vendor/wllama/esm/wasm/wllama.wasm
 
-          python3 -m py_compile scripts/patch-build.py
           node scripts/build-news.mjs
-          python3 scripts/patch-build.py
 
           node --check dist/cpu.js
           node --check dist/news-v09.js
           node --check dist/web-search.js
+          node --check dist/sw.js
           test -f dist/news.json
           node -e 'const n=require("./dist/news.json"); if(!(n.categories?.uk?.length>0)) process.exit(1); console.log(`validated UK headlines: ${n.categories.uk.length}`)'
-          grep -q 'PWA v1.1 WEB' dist/index.html
-          grep -q 'PWA v1.1 WEB' dist/web-search.js
-          grep -q 'web-search.js' dist/index.html
-          grep -q 'WEB_SEARCH_REQUEST' dist/web-search.js
-          grep -q 'WEB_SEARCH_REQUEST' dist/cpu.js
-          grep -q 'NEWS_SUMMARY_REQUEST' dist/news-v09.js
-          grep -q 'isExternalContext?384:320' dist/cpu.js
-          grep -q 'n_ctx:1280' dist/cpu.js
+          grep -q 'PWA v1.2 SMART' dist/index.html
+          grep -q 'PWA v1.2 SMART' dist/news-v09.js
+          grep -q 'PWA v1.2 SMART' dist/web-search.js
+          grep -q 'Qwen2.5 1.5B Smart' dist/cpu.js
+          grep -q 'Qwen2.5-1.5B-Instruct-Q4_K_M.gguf' dist/cpu.js
+          grep -q 'SmolLM2-360M-Instruct-Q4_K_M.gguf' dist/cpu.js
+          grep -q 'nCtx:2048' dist/cpu.js
           grep -q 'autoLoadCached' dist/cpu.js
           grep -q 'modelManager.getModels' dist/cpu.js
           grep -q 'finishReason==="length"' dist/cpu.js
-          grep -q './news.json' dist/news-v09.js
-          grep -q 'bartowski/SmolLM2-360M-Instruct-GGUF' dist/cpu.js
+          grep -q 'NEWS_SUMMARY_REQUEST' dist/news-v09.js
+          grep -q 'WEB_SEARCH_REQUEST' dist/web-search.js
+          grep -q 'Best internet evidence' dist/web-search.js
+          grep -q 'answerLocally(q,items,ask)' dist/web-search.js
           grep -q './vendor/wllama/esm/index.js' dist/cpu.js
           grep -q 'stream:true' dist/cpu.js
+          grep -q 'web-search.js' dist/index.html
           grep -q 'web-search.js' dist/sw.js
-          grep -q 'pocketmind-shell-v1100' dist/sw.js
-          ! grep -q 'Pre-load check failed' dist/cpu.js
+          grep -q 'pocketmind-shell-v1200' dist/sw.js
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
